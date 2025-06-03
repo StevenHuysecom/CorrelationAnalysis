@@ -1,0 +1,527 @@
+classdef CorrelationMovie < Core.MPMovie
+properties (SetAccess = 'private')
+    
+    IsEnoughRam
+    IsCudaDevice
+
+end
+properties (SetAccess ='public')
+    CorrelationOutput
+    AllFrames
+    DDMInfo
+end
+methods 
+    
+%%  Instantiation
+function obj = CorrelationMovie(raw, MPCal, info,DDMInfo)
+             obj  = obj@Core.MPMovie(raw,MPCal,info); 
+
+             assert(~isempty(DDMInfo), 'No MovieInfo provided, check parameter input'); 
+             
+             obj.DDMInfo = DDMInfo;
+
+             try
+                 gpuDevice;
+                 obj.IsCudaDevice = true;         
+             catch
+                 obj.IsCudaDevice = false;
+             end
+
+        end
+        
+%%  Analysis
+        
+        function [ROI] = DefineROI(obj)
+            ROIFile = append(obj.raw.movInfo.Path, filesep, 'ROI.mat');
+            
+            if obj.DDMInfo.MultiPlane == 1
+                if exist(ROIFile)
+                    ROI = load(ROIFile);
+                    ROI = ROI.ROI;
+                else
+                    for i = 1:8
+                        if i < 5
+                            frame = obj.getFrame(1);
+                            x = 1;
+                        else
+                            frame = obj.getFrame(2);
+                            x = 2;
+                        end
+                        % h = questdlg('Do you want to use a ROI?','Question to user','Yes','No', 'Yes');
+                        frame = obj.getFrame(1);
+                        if strcmp(obj.DDMInfo.useROI  ,'on')
+                            f = figure
+            
+                            imagesc(frame(:,:,1))
+                            title(append('Camera ', num2str(x)))
+                            hold on
+                            if and(i ~= 1, i ~=5)
+                                if x == 1
+                                    for z = 1:size(ROI, 1)
+                                        rectangle('Position',ROI{z,1});
+                                    end
+                                elseif x == 2
+                                    for z = 5:size(ROI, 1)
+                                        rectangle('Position',ROI{z,1});
+                                    end
+                                end
+                            end
+                            test = drawrectangle();
+                            ROI{i,1}  = round(test.Position);
+                            close(f)
+            
+                        else
+                            ROI{i,1} = [1,1,size(frame, 1)-1, size(frame,2)-1];  
+                        end
+                    end
+                end
+                
+                Filename = append(obj.raw.movInfo.Path, filesep, 'ROI.mat');
+                save(Filename, 'ROI');
+            else
+                if exist(ROIFile)
+                    ROI = load(ROIFile);
+                    ROI = ROI.ROI;
+                else
+                    % h = questdlg('Do you want to use a ROI?','Question to user','Yes','No', 'Yes');
+                    frame = obj.getFrame(1);
+                    if strcmp(obj.DDMInfo.useROI  ,'on')
+                        figure
+        
+                        imagesc(frame(:,:,1))
+                        test = drawrectangle();
+                        ROI  = round(test.Position);
+        
+                    else
+                        ROI = [1,1,size(frame, 1)-1, size(frame,2)-1];  
+                    end
+        
+                    Filename = append(obj.raw.movInfo.Path, filesep, 'ROI.mat');
+                    save(Filename, 'ROI');
+                end
+            end
+        end
+
+        function  LoadAllFrames(obj,driftCorr)
+        % Loads all data. Stops if it almost runs out of memory ,- when the
+        % amount of memory left is less then 2 GB, in order to leave some
+        % of it for other operations. 
+            
+            h = questdlg('Do you want to use a ROI?','Question to user','Yes','No', 'Yes');
+            frame = obj.getFrame(1);
+            if strcmp(h,'Yes')
+                figure
+
+                imagesc(frame(:,:,1))
+                test = drawrectangle();
+                ROI  = round(test.Position);    
+            else
+                ROI = [];
+
+            end
+                   
+            obj.AllFrames = cell(1,obj.DDMInfo.nFrames);
+            f = waitbar(0,'Loading frames');
+            for i=1:obj.DDMInfo.nFrames 
+                waitbar(i./obj.DDMInfo.nFrames,f,'Loading frames');
+                user = memory;
+                if  user.MemAvailableAllArrays>1e+09
+                    try
+                    ZeroFrame= single(obj.getFrame(i));
+                    catch
+                    ZeroFrame= single(obj.getFrame(i).Cam1);
+                    end
+                    close all
+
+                    
+                    for k=1:length(size(ZeroFrame))
+                       if mod(size(ZeroFrame,1),2) == 1 
+                           ZeroFrame = ZeroFrame(2:end,:,:);
+                           
+                       end
+                       ZeroFrame = shiftdim(ZeroFrame,1);        
+                    end
+                    
+                    obj.AllFrames{i}= ZeroFrame;  
+                    
+                else
+                    obj.DDMInfo.nFrames = i-1;
+                    warning(['Not enough RAM to load all of the '  num2str(obj.DDM.nFrames) 'frames. Loaded only ' num2str(i-1)] )
+                    break;
+                end
+            end 
+            close(f);
+            correlationInfo.corrSz = 100; %in px. Radius of the ROI used for correlation
+            %correlation function
+            correlationInfo.driftPeriod = 1; %in Frame, Number of frame that are averaged
+            %for driftCalculation ==> 1 mean that drift is calculated for each frame
+            scalingFactor = 1;%Used for interpolation in sub-pixel Drift correction 
+            %objects of interest
+            
+
+            if driftCorr
+                [corrData,~] = PreProcess.CorrelationDrift(obj.AllFrames,scalingFactor,correlationInfo);
+            else
+                corrData = obj.AllFrames;
+            end
+            
+            if isempty(ROI)
+               ROI = [1 1 size(corrData{1},2)-2,size(corrData{1},1)-2];
+            end
+            
+            %Fix ROI
+            if mod(ROI(3),2) ~=0
+                ROI(3) = ROI(3)-1;
+            end
+
+            if mod(ROI(4),2) ~=0
+                ROI(4) = ROI(4)-1;
+            end
+            
+            dim = size(corrData);
+            %apply ROI            
+            for i = 1:dim(end)
+               corrData{i} = corrData{i}(ROI(2):ROI(2)+ROI(4),ROI(1):ROI(1) + ROI(3),:); 
+            end
+            obj.AllFrames = corrData;
+            
+        end
+            
+        
+        function  DDMOutput = main(obj,Info,file)
+                Corr1_cell = cell(Info.nFrames-1, 1); % Each dt gets its own cell
+
+                parfor dt = 1:Info.nFrames-1
+                    stp = dt;
+                    cnt = 1;
+                    tempCorr = [];
+                
+                    while cnt <= stp && cnt + stp <= Info.nFrames
+                        idx = cnt:stp:Info.nFrames;
+                        for c = 1:numel(idx) - 1
+                            Frame1 = obj.AllFrames{1,idx(c)};
+                            Frame2 = obj.AllFrames{1,idx(c+1)};
+                            tempCorr(end+1,1) = multissim(Frame1, Frame2);
+                        end
+                        cnt = cnt + 1;
+                    end
+                
+                    Corr1_cell{dt} = tempCorr; % Safe!
+                    fprintf('Processing dt = %d / %d\n', dt, Info.nFrames - 1);
+                end
+                
+                % After the parfor loop, convert cell array to matrix (if needed)
+                Corr1 = NaN(Info.nFrames-1, Info.nFrames-1);
+                for dt = 1:Info.nFrames-1
+                    nVals = numel(Corr1_cell{dt});
+                    Corr1(1:nVals, dt) = Corr1_cell{dt};
+                end
+
+                test = nanmean(Corr1, 1);
+                std = nanstd(Corr1, 1);
+                obj.CorrelationOutput = Corr1;
+
+        end
+
+        function  DDMOutput = FFTReconstructions(obj,Info,file, MaskStruct, varargin)
+            %Parse inputs conditionally
+            if contains(obj.raw.movInfo.Path, 'Actin')
+                maxLoop  = 3;
+            else
+                maxLoop = 1;
+            end
+            for c = 1:maxLoop
+                if contains(obj.raw.movInfo.Path, 'Actin')
+                    if c == 1
+                        Mask = MaskStruct.Mask_Ruff;
+                    elseif c == 2
+                        Mask = MaskStruct.Mask_Trans;
+                    elseif c == 3
+                        Mask = MaskStruct.Mask_Cort;
+                    end
+                else
+                    Mask = MaskStruct;
+                end
+                p = inputParser;  
+                addOptional(p, 'ROI',  [1, size(obj.AllFrames{1},1), size(obj.AllFrames{1},1);  %Default ROI as image size
+                                        1, size(obj.AllFrames{1},2), size(obj.AllFrames{1},2);
+                                        1 ,size(obj.AllFrames{1},3) ,size(obj.AllFrames{1},3)]);
+                addOptional(p, 'Padsize',zeros(1, 3));
+                addOptional(p, 'NumBins', 200);
+                addOptional(p, 'CriticalAngle',0);
+                parse(p,varargin{:});
+                FrameSize = p.Results.ROI(:,3)'+p.Results.Padsize;
+                ExpTime = Info.ExpTime; 
+                DDMOutput = [];
+                
+                
+                %Generate struct grid for n-D averaging
+                f = waitbar(0,'Calculating AvgFFT frame by frame');
+                if isempty(obj.DDMInfo.MinTimeLag)
+                    dtMin = 1;
+                else
+                    dtMin = obj.DDMInfo.MinTimeLag;
+                end
+    
+                [RadialValueInQSpace, ValidRange]=obj.Get3DGrid(FrameSize,p.Results.CriticalAngle);
+                SimilarityMatrix = {};
+                for dt=dtMin:5:dtMin+50
+                    waitbar(dt./(obj.DDMInfo.nFrames-1), f, 'Calculating Diff Images & FFT')
+                    obj.IsCudaDevice = 0;
+                    if obj.IsCudaDevice==1
+                        AvgFFT = zeros(FrameSize(1),FrameSize(2),FrameSize(3),'gpuArray');
+                    else
+                        AvgFFT = zeros(FrameSize(1),FrameSize(2),FrameSize(3));
+                    end
+                    NumBins = round((obj.DDMInfo.Qmax - obj.DDMInfo.Qmin)./(4*pi./(min(size(RadialValueInQSpace))*obj.DDMInfo.PixelSize))-1);
+                    for t=obj.DDMInfo.nFrames-dt-50:obj.DDMInfo.nFrames-dt
+                        ROI = p.Results.ROI;
+                        if obj.IsCudaDevice==1
+                            FrameDelta =gpuArray(obj.AllFrames{t+dt}(ROI(1,1):ROI(1,2),ROI(2,1):ROI(2,2),ROI(3,1):ROI(3,2))-obj.AllFrames{t}(ROI(1,1):ROI(1,2),ROI(2,1):ROI(2,2),ROI(3,1):ROI(3,2))); 
+                        else
+                            FrameDelta =(obj.AllFrames{t+dt}(ROI(1,1):ROI(1,2),ROI(2,1):ROI(2,2),ROI(3,1):ROI(3,2))-obj.AllFrames{t}(ROI(1,1):ROI(1,2),ROI(2,1):ROI(2,2),ROI(3,1):ROI(3,2)));  
+                        end
+                        DiffFrame = FrameDelta;
+                        AvgFFT = fftshift(fft2(FrameDelta)); 
+                        Mask = Mask(1:size(DiffFrame, 1), 1:size(DiffFrame,2));
+                        DiffFrame(Mask ~= 1) = 0;
+    
+                        MinQTracked = min(RadialValueInQSpace(:));
+                        Min = max(MinQTracked, obj.DDMInfo.Qmin);
+                        BinSize = (obj.DDMInfo.Qmax - Min)./NumBins;
+                        FoundRadii = 0;
+                        R = Min;
+                        next = 1;
+        
+                        %%% Calculate Average
+                        Reconstructions = {};
+                        SimilarityIdx = [];
+                        while ~isempty(FoundRadii)
+                            R = R+BinSize;
+                            if R <= obj.DDMInfo.Qmax
+                                if size(AvgFFT) == size(RadialValueInQSpace)    
+                                    QMask = RadialValueInQSpace;
+                                    QMask(QMask>=R-BinSize & RadialValueInQSpace<R) = 1;
+                                    QMask(QMask ~= 1) = 0;
+                                    FourierIm = AvgFFT;
+                                    FourierIm(QMask ~= 1) = 0;
+                                    ReconstructedIm = ifft2(ifftshift(FourierIm));
+                                    Reconstructions{end+1,1} = ReconstructedIm;
+                                    Reconstructions{end, 2} = R;
+                                    ReconstructedIm(Mask ~= 1) = 0;
+                                    SimilarityIdx(end+1) = ssim(ReconstructedIm, DiffFrame);
+                                elseif size(AvgFFT)
+                                    error('Differential image and reference frame q vector do not have same dimensions')
+                                end
+                            else
+                                break
+                            end
+                        end
+                        if t == obj.DDMInfo.nFrames-dt-50
+                            Similarityt = SimilarityIdx;
+                        else
+                            Similarityt(1,:) = Similarityt(1,:) + SimilarityIdx;
+                        end
+                        Similarityt(2,:) = cell2mat(Reconstructions(:,2))';
+                    end
+                    SimilarityMatrix{end+1,1} = dt;
+                    SimilarityMatrix{end, 2} = Similarityt;
+    
+                end
+                close(f)
+                SimilarityMatrix = table(SimilarityMatrix(:,1), SimilarityMatrix(:,2), 'VariableNames', {'TimeLag', 'SimilarityIndex'});
+                if contains(obj.raw.movInfo.Path, 'Actin')
+                    if c == 1
+                        Filename = append(obj.raw.movInfo.Path, filesep, 'SimilarityIdxQVectors_Ruff.mat');
+                    elseif c == 2
+                        Filename = append(obj.raw.movInfo.Path, filesep, 'SimilarityIdxQVectors_Trans.mat');
+                    elseif c == 3
+                        Filename = append(obj.raw.movInfo.Path, filesep, 'SimilarityIdxQVectors_Cort.mat');
+                    end
+                else
+                    Filename = append(obj.raw.movInfo.Path, filesep, 'SimilarityIdxQVectors.mat');
+                end
+                
+                save(Filename, "SimilarityMatrix");
+    
+                cc = colormap(jet(size(SimilarityMatrix,1)));
+                Fig = figure()
+                for i = 1:size(SimilarityMatrix,1)
+                    plot(SimilarityMatrix.SimilarityIndex{i,1}(2,:), SimilarityMatrix.SimilarityIndex{i,1}(1,:), 'Color', cc(i,:), 'LineWidth', 1') ;
+                    hold on
+                end
+                colormap(cc)
+                d = colorbar;
+                caxis([dtMin dtMin+50]);
+                title(d, 'TimeLag')
+                ylabel('Similarity')
+                xlabel('QVector')
+                
+                if contains(obj.raw.movInfo.Path, 'Actin')
+                    if c == 1
+                        Filename = append(obj.raw.movInfo.Path, filesep, 'SimilarityIdxQVectors_Ruff.png');
+                    elseif c == 2
+                        Filename = append(obj.raw.movInfo.Path, filesep, 'SimilarityIdxQVectors_Trans.png');
+                    elseif c == 3
+                        Filename = append(obj.raw.movInfo.Path, filesep, 'SimilarityIdxQVectors_Cort.png');
+                    end
+                else
+                    Filename = append(obj.raw.movInfo.Path, filesep, 'SimilarityIdxQVectors.png');
+                end
+                
+                saveas(Fig,Filename);
+            end
+        end
+        
+        
+        
+        function [AverageDDMValueAtR, anisotropy_values, Reconstructions] = AverageRadialy3D(obj, AvgFFT,FrameSize,critangle, DiffFrames)
+            
+        % Averages the scattering function in 3d radially. Returns the
+        % average values in function of time and q-vector.
+
+                Reconstructions = [];
+                [RadialValueInQSpace, ValidRange]=obj.Get3DGrid(FrameSize,critangle);
+                % BinSize = max(RadialValueInQSpace,[],'all')/NumBins;
+                NumBins = round((obj.DDMInfo.Qmax - obj.DDMInfo.Qmin)./(4*pi./(min(size(RadialValueInQSpace))*obj.DDMInfo.PixelSize))-1);
+                MinQTracked = min(RadialValueInQSpace(:));
+                Min = max(MinQTracked, obj.DDMInfo.Qmin);
+                BinSize = (obj.DDMInfo.Qmax - Min)./NumBins;
+                FoundRadii = 0;
+                R = Min;
+                next = 1;
+                AverageDDMValueAtR = nan(NumBins,2);
+                AvgFFT = gather(AvgFFT);
+
+                [N, M] = size(AvgFFT);
+                cx = floor(N/2) + 1;
+                cy = floor(M/2) + 1;
+                num_theta = 360;
+                theta_vals = linspace(0, 2*pi, num_theta);
+
+                %%% Calculate Average
+                while ~isempty(FoundRadii)
+                    R = R+BinSize;
+                    if R <= obj.DDMInfo.Qmax
+                        if size(AvgFFT) == size(RadialValueInQSpace)
+                            for t = 1:num_theta
+                                x = round(cx + R * cos(theta_vals(t)));
+                                y = round(cy + R * sin(theta_vals(t)));
+                                if x >= 1 && x <= N && y >= 1 && y <= M
+                                    intensity_profile(t) = AvgFFT(x,y);
+                                end
+                            end
+
+                            I_max = max(intensity_profile);
+                            I_min = min(intensity_profile);
+                            anisotropy_values(next,:) = [R, (I_max - I_min) / (I_max + I_min)];
+
+                            FoundRadii = AvgFFT(RadialValueInQSpace>=R-BinSize & RadialValueInQSpace<R &  ValidRange );
+                            AverageDDMValueAtR(next,:) = [R ,  nanmean(FoundRadii, 'all')];
+                            next = next+1;
+
+                            Mask = RadialValueInQSpace;
+                            Mask(Mask>=R-BinSize & RadialValueInQSpace<R) = 1;
+                            Mask(Mask ~= 1) = 0;
+                            FourierIm = DiffFrames{1,1};
+                            FourierIm(Mask ~= 1) = 0;
+                            ReconstructedIm = real(ifft2(ifftshift(FourierIm)));
+                            Reconstructions{end+1} = ReconstructedIm;
+                        elseif size(AvgFFT)
+                            error('Differential image and reference frame q vector do not have same dimensions')
+                        end
+                    else
+                        break
+                    end
+                end
+        end
+
+        function [Quality] = CheckISFQuality(obj)
+          
+             for i = 1:size(obj.DDMOutput, 1)
+                isf = obj.DDMOutput.DDMSignalValue{i,1};
+                tau = obj.DDMOutput.Time{i,1};
+            
+                isf = isf(:);
+                tau = tau(:);
+            
+                % Normalize ISF to range [0, 1] for analysis
+                isf_min = min(isf);
+                isf_max = max(isf);
+                normalized_isf = (isf - isf_min) / (isf_max - isf_min);
+            
+                isf_derivative = diff(normalized_isf) ./ diff(tau); % Numerical derivative
+                smoothness_measure(i,1) = mean(isf_derivative); % Average increase rate
+            
+                if smoothness_measure(i,1) > 0.0020
+                    isf_quality(i,1) = 1; 
+                else
+                    isf_quality(i,1) = 0;
+                end     
+             end
+
+             if any(isf_quality )
+                 Quality = 'Good';
+                 obj.DDMOutput.Quality = isf_quality;
+                
+                 diff_array = [0; diff(isf_quality)];
+                 starts = find(diff_array == 1); % Start of a sequence of 1's
+                 ends = find(diff_array == -1) - 1; % End of a sequence of 1's
+                
+                 if isf_quality(end) == 1
+                     ends = [ends; length(isf_quality)];
+                 end
+
+                 if size(ends, 1) > size(starts, 2)
+                     if isf_quality(1) == 1
+                        starts = [1; starts];
+                     end
+                 end
+                 lengths = ends - starts + 1;
+                
+                 [~, max_idx] = max(lengths);
+                
+                 if isempty(max_idx)
+                     % No sequences of 1's found
+                     start_idx = [];
+                     end_idx = [];
+                 else
+                     start_idx = starts(max_idx);
+                     end_idx = ends(max_idx);
+                 end
+                
+                 if isempty(start_idx)
+                     start_idx = 1;
+                 end
+                 if isempty(end_idx)
+                     end_idx = size(obj.DDMOutput, 1);
+                 end
+                 obj.DDMInfo.Qmin = obj.DDMOutput.QVector(start_idx);
+                 obj.DDMInfo.Qmax = obj.DDMOutput.QVector(end_idx-1);
+             else
+                 Quality = 'Bad';
+             end
+        end
+
+     
+end 
+methods(Static)
+    
+
+        function DDMOutput = ConvertOutput(DDMOutList,ExpTime)
+            DDMOutput = table(0,{[]},{[]},'VariableNames',{'QVector','Time','DDMSignalValue'});
+            warning('off','all')
+            for i=2:size(DDMOutList,1)
+                DDMOutput.QVector(i-1) = DDMOutList(i,1);
+                DDMOutput.Time(i-1) = {DDMOutList(1,2:end)*ExpTime};
+                DDMOutput.DDMSignalValue(i-1) ={DDMOutList(i,2:end)};
+    
+            end
+            warning('on','all')
+        end
+     
+
+
+
+end  
+end
