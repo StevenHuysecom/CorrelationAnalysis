@@ -65,6 +65,7 @@ classdef Movie < handle
             obj.raw.fullPath  = [movInfo.Path filesep frameInfo(1).File];
             obj.raw.maxFrame  = movInfo.maxFrame;
             obj.raw.ext       = ext;
+            obj.raw.movToLoad = raw.MovToLoad;
             
         end
                 

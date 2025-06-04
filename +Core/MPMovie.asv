@@ -83,7 +83,7 @@ classdef MPMovie < Core.Movie
             elseif length(unique(idx2Calibrated))==2
                 
                 if isempty(obj.raw.movToLoad)
-                    fullPath = [obj.raw.movInfo.Path filesep 'calibratedNoSegmentation'];
+                    
                 else
                     fullPath = [obj.raw.movInfo.Path filesep 'calibrated' obj.raw.movToLoad];
                 end
@@ -188,7 +188,7 @@ classdef MPMovie < Core.Movie
             [idx] = Core.Movie.checkFrame(idx,obj.raw.maxFrame(1));
             %Get the data of the requested frame
             [frame] = getFrame(obj,idx);
-            pxSize = obj.info.pxSize/1000;%in µm
+            pxSize = obj.info.pxSize/1000;%in Âµm
             scaleBarPx = scaleBar/pxSize;
             planes = size(frame,3);
             
@@ -244,7 +244,7 @@ classdef MPMovie < Core.Movie
                 hold on
                 x = size(currentIM,2)-scaleBarPx-(0.05*size(currentIM,2)):size(currentIM,2)-0.05*size(currentIM,2);
                 y = ones(1,length(x))*size(currentIM,1)-0.05*size(currentIM,2);
-                text(mean(x),mean(y)-0.04*size(currentIM,1),[num2str(scaleBar) ' µm'],'HorizontalAlignment','center','Color','white','fontWeight','bold','fontSize',8);
+                text(mean(x),mean(y)-0.04*size(currentIM,1),[num2str(scaleBar) ' Âµm'],'HorizontalAlignment','center','Color','white','fontWeight','bold','fontSize',8);
                 plot(x,y,'-w','LineWidth',2.5);
                 axis image;
                 
