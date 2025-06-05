@@ -41,10 +41,10 @@ end
                 obj.CorrelationInfo.nFrames = obj.raw.maxFrame;
             end
 
-            obj.AllFrames = cell(1,obj.CorrelationInfo.nFrames);
+            obj.AllFrames = cell(1,obj.CorrelationInfo.nFrames{1});
             f = waitbar(0,'Loading frames');
-            for i=1:obj.CorrelationInfo.nFrames 
-                waitbar(i./obj.CorrelationInfo.nFrames,f,'Loading frames');
+            for i=1:obj.CorrelationInfo.nFrames{1} 
+                waitbar(i./obj.CorrelationInfo.nFrames{1},f,'Loading frames');
                 user = memory;
                 if  user.MemAvailableAllArrays>1e+09
                     try
@@ -85,8 +85,30 @@ end
             else
                 corrData = obj.AllFrames;
             end
+
+            ROIFile = append(obj.raw.movInfo{1}.Path, filesep, 'ROI.mat');
+            if exist(ROIFile)
+                ROI = load(ROIFile);
+                ROI = ROI.ROI;
+            else
+                % h = questdlg('Do you want to use a ROI?','Question to user','Yes','No', 'Yes');
+                frame = obj.getFrame(1);
+                if strcmp(obj.DDMInfo.useROI  ,'on')
+                    figure
+    
+                    imagesc(frame(:,:,1))
+                    test = drawrectangle();
+                    ROI  = round(test.Position);
+    
+                else
+                    ROI = [1,1,size(frame, 1)-1, size(frame,2)-1];  
+                end
+    
+                Filename = append(obj.raw.movInfo.Path, filesep, 'ROI.mat');
+                save(Filename, 'ROI');
+            end
             
-            ROI = [1 1 size(corrData{1},2)-2,size(corrData{1},1)-2];
+            % ROI = [1 1 size(corrData{1},2)-2,size(corrData{1},1)-2];
             
             %Fix ROI
             if mod(ROI(3),2) ~=0
@@ -108,30 +130,36 @@ end
             
         
         function  [CorrelationOutput] = main(obj,Info,file, varargin)
-                Corr1_cell = cell(obj.CorrelationInfo.nFrames-1, 1); % Each dt gets its own cell
+                Corr1_cell = cell(obj.CorrelationInfo.nFrames{1}-1, 1); % Each dt gets its own cell
 
-                parfor dt = 1:obj.CorrelationInfo.nFrames-1
+                for dt = 1:obj.CorrelationInfo.nFrames{1}-1
                     stp = dt;
                     cnt = 1;
                     tempCorr = [];
                 
-                    while cnt <= stp && cnt + stp <= obj.CorrelationInfo.nFrames
-                        idx = cnt:stp:obj.CorrelationInfo.nFrames;
+                    while cnt <= stp && cnt + stp <= obj.CorrelationInfo.nFrames{1}
+                        idx = cnt:stp:obj.CorrelationInfo.nFrames{1};
                         for c = 1:numel(idx) - 1
                             Frame1 = obj.AllFrames{1,idx(c)};
                             Frame2 = obj.AllFrames{1,idx(c+1)};
+                            if strcmp(obj.raw.movToLoad, 'Mask')
+                                Frame1(Frame1 == 0) = 1;
+                                Frame1(Frame1 ~= 1) = 0;
+                                Frame2(Frame2 == 0) = 1;
+                                Frame2(Frame2 ~= 1) = 0;
+                            end
                             tempCorr(end+1,1) = multissim(Frame1, Frame2);
                         end
                         cnt = cnt + 1;
                     end
                 
                     Corr1_cell{dt} = tempCorr; % Safe!
-                    fprintf('Processing dt = %d / %d\n', dt, obj.CorrelationInfo.nFrames - 1);
+                    fprintf('Processing dt = %d / %d\n', dt, obj.CorrelationInfo.nFrames{1} - 1);
                 end
                 
                 % After the parfor loop, convert cell array to matrix (if needed)
-                Corr1 = NaN(obj.CorrelationInfo.nFrames-1, obj.CorrelationInfo.nFrames-1);
-                for dt = 1:obj.CorrelationInfo.nFrames-1
+                Corr1 = NaN(obj.CorrelationInfo.nFrames{1}-1, obj.CorrelationInfo.nFrames{1}-1);
+                for dt = 1:obj.CorrelationInfo.nFrames{1}-1
                     nVals = numel(Corr1_cell{dt});
                     Corr1(1:nVals, dt) = Corr1_cell{dt};
                 end
@@ -224,7 +252,7 @@ end
                 Figure2Path = append(SavePath, filesep, 'CorrelationSamplesError_NoSegmentation.png');
             else
                 Figure1Path = append(SavePath, filesep, 'CorrelationSamplesSeparate_', obj.raw.movToLoad, '.png');
-                Figure1Path = append(SavePath, filesep, 'CorrelationSamplesError_', obj.raw.movToLoad, '.png');
+                Figure2Path = append(SavePath, filesep, 'CorrelationSamplesError_', obj.raw.movToLoad, '.png');
             end
 
             saveas(Fig1, Figure1Path);

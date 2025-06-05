@@ -3,17 +3,18 @@ clear all
 close all
 
 %% Pathinfo
-MainFolder = 'E:\DDM_TestData';
+MainFolder = 'S:\DDM_TestData';
 TimeFolders = {'Dancing cells'};
 ProteinFolders = {'1_Vinculin'}; 
 DiseaseFolders = {'CCM'};
 SampleFolders = {'Set1'};
 
 %% Storing info about the file
-file.MovToLoad = []; %For dancing cells: specify which mask to use, otherwise leave empty
+file.MovToLoad = ['Mask']; %For dancing cells: specify which mask to use, otherwise leave empty
+                     %'RawData', 'DataMasked', 'Mask'
 info.type = 'normal'; %normal or transmission
 info.runMethod = 'run'; % load or run
-info.calibrate = true; %true to recalibrate;
+info.calibrate = false; %true to recalibrate;
 file.ext   = '.tif';
 path2Cal =  [];
 dimension = '2D';

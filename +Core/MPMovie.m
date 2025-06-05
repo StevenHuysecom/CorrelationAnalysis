@@ -62,14 +62,14 @@ classdef MPMovie < Core.Movie
         function calibrate(obj)
 
             %Method that the user will call to calibrate the data
-            folderContent = dir(obj.raw.movInfo.Path);
+            folderContent = dir(obj.raw.movInfo{1}.Path);
             if isempty(obj.raw.movToLoad)
                 folderString = append('calibrated', 'NoSegmentation');
             else
                 folderString = append('calibrated', obj.raw.movToLoad);
             end
             idx2Calibrated = contains({folderContent.name}, folderString);
-            
+        
             %if there is only 1 diff value, this value must be 0 and thus
             %calibrated folder does not exist thus, we calibrate
             if length(unique(idx2Calibrated))<2
@@ -83,9 +83,9 @@ classdef MPMovie < Core.Movie
             elseif length(unique(idx2Calibrated))==2
                 
                 if isempty(obj.raw.movToLoad)
-                    fullPath = [obj.raw.movInfo.Path filesep 'calibratedNoSegmentation'];
+                    fullPath = [obj.raw.movInfo{1}.Path filesep 'calibratedNoSegmentation'];
                 else
-                    fullPath = [obj.raw.movInfo.Path filesep 'calibrated' obj.raw.movToLoad];
+                    fullPath = [obj.raw.movInfo{1}.Path filesep 'calibrated' obj.raw.movToLoad];
                 end
                 [file2Analyze] = obj.getFileInPath(fullPath, '.mat');
                 
@@ -264,7 +264,7 @@ classdef MPMovie < Core.Movie
             %Allow the user to extract data from a specific frame, behavior
             %depends on the calibration
             assert(length(idx)==1,'Only one frame at a time');
-            [idx] = Core.Movie.checkFrame(idx,obj.raw.maxFrame(1));
+            [idx] = Core.Movie.checkFrame(idx,obj.raw.maxFrame{1}(1));
             %Behavior depend on status
             if isempty(obj.calibrated)
                 
@@ -376,10 +376,13 @@ classdef MPMovie < Core.Movie
         
         function [calib] = applyCalib(obj)
             
-            frameInfo = obj.raw.frameInfo;
-            movInfo   = obj.raw.movInfo;
+            for i = 1:size(obj.raw.movInfo, 2)
+                frameInfo{i} = obj.raw.frameInfo{i};
+                movInfo{i}   = obj.raw.movInfo{i};
+            end
+
             step = 100;
-            maxFrame = obj.raw.movInfo.maxFrame(1);
+            maxFrame = obj.raw.movInfo{1}.maxFrame(1);
             frame2Load = obj.info.frame2Load;
             if ischar(frame2Load)
                 frame2Load = 1:maxFrame;
@@ -392,6 +395,7 @@ classdef MPMovie < Core.Movie
             
             nStep = ceil((endFrame-startFrame)/step);
             frame = startFrame:step:endFrame;
+
             disp('Calibrating the dataset');
             for i = 1:nStep
                 disp(['Calibrating step ' num2str(i)]);
@@ -404,7 +408,7 @@ classdef MPMovie < Core.Movie
                     
                 end
                 %change behavior depending on extension:
-                switch obj.raw.movInfo.ext
+                switch obj.raw.movInfo{1}.ext
                     case '.ome.tif'
                         assert(~isempty(obj.cal2D.file),'no calibration file provided, cannot calibrate');
                         MP = true;
@@ -418,19 +422,33 @@ classdef MPMovie < Core.Movie
                         [calib] = obj.saveCalibrated(data,endFrame,isTransmission,MP);
                         
                     otherwise
-                        extName = strrep(obj.raw.movInfo.ext,'.','');
+                        extName = strrep(obj.raw.movInfo{1}.ext,'.','');
                         
                         MP = false;%not a multiplane data
-                        [movC1] = Load.Movie.(extName).getFrame(obj.raw.fullPath,cFrame);
-                        %reformat in X,Y,P,T format for the saveCalibrated
-                        %part
-                        if extName == 'mpg' %#ok<BDSCA>
-                            data(:,:,1,1:size(movC1,3)) = uint32(movC1);
-                        else
-                            data(:,:,1,1:size(movC1,3)) = uint16(movC1);
+
+                        for i = 1:size(obj.raw.fullPath, 2)
+                            [movC{i}] = Load.Movie.(extName).getFrame(obj.raw.fullPath{i},cFrame);
+                            %reformat in X,Y,P,T format for the saveCalibrated
+                            %part
+                            if extName == 'mpg' %#ok<BDSCA>
+                                data{i}(:,:,1,1:size(movC{i},3)) = uint32(movC{i});
+                            else
+                                data{i}(:,:,1,1:size(movC{i},3)) = uint16(movC{i});
+                            end
                         end
                         isTransmission = false;
-                        [calib] = obj.saveCalibrated(data,endFrame,isTransmission,MP);
+
+                        if size(obj.raw.fullPath, 2) ~= 1
+                            assert(size(data{1}, 4) == size(data{2}, 4), 'Data and mask dont have equal number of frames in bins for calibration')
+                            for j = 1:size(data{1}, 4)
+                                RawDataFrame = data{1}(:,:,1,j);
+                                Mask = data{2}(:,:,1,j);
+                                RawDataFrame(Mask ~= 0) = 0;
+                                data{1}(:,:,1,j) = RawDataFrame;
+                            end
+                            disp('Applying mask')
+                        end
+                        [calib] = obj.saveCalibrated(data{1},endFrame,isTransmission,MP);
                        
                 end
             end
@@ -440,9 +458,9 @@ classdef MPMovie < Core.Movie
         function [calib] = saveCalibrated(obj,data,maxFrame,isTransmission,MP)
             
             if isempty(obj.raw.movToLoad)
-                calDir = [obj.raw.movInfo.Path filesep 'calibratedNoSegmentation'];
+                calDir = [obj.raw.movInfo{1}.Path filesep 'calibratedNoSegmentation'];
             else
-                calDir = [obj.raw.movInfo.Path filesep 'calibrated' obj.raw.movToLoad];
+                calDir = [obj.raw.movInfo{1}.Path filesep 'calibrated' obj.raw.movToLoad];
             end
             calTransDir = [calDir filesep 'Transmission'];
             mkdir(calDir);

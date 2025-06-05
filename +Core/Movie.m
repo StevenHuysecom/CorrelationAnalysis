@@ -40,7 +40,7 @@ classdef Movie < handle
            
             obj.raw  = raw;
             if ~isfield(info,'frame2Load')
-                info.frame2Load = 1:obj.raw.maxFrame(1);
+                info.frame2Load = 1:obj.raw.maxFrame{1}(1);
             end
             obj.info = info;
             
@@ -62,8 +62,10 @@ classdef Movie < handle
                        
             obj.raw.movInfo   = movInfo;
             obj.raw.frameInfo = frameInfo;
-            obj.raw.fullPath  = [movInfo.Path filesep frameInfo(1).File];
-            obj.raw.maxFrame  = movInfo.maxFrame;
+            for i = 1:size(movInfo, 2)
+                obj.raw.fullPath{i}  = [movInfo{i}.Path filesep frameInfo{i}(1).File];
+                obj.raw.maxFrame{i}  = movInfo{i}.maxFrame;
+            end
             obj.raw.ext       = ext;
             obj.raw.movToLoad = raw.MovToLoad;
             
@@ -437,15 +439,34 @@ classdef Movie < handle
             % Filter files to only include those ending in '_driftcorr' % SARAHV
             if isfield(rawInfo, 'MovToLoad')
                 if ~isempty(rawInfo.MovToLoad)
-                    file2Analyze = file2Analyze(contains({file2Analyze.name}, append(rawInfo.MovToLoad, '.tiff'))); % SARAHV
+                    if strcmp(rawInfo.MovToLoad, 'RawData')
+                        file2Analyze = file2Analyze(contains({file2Analyze.name}, append('driftcorr', '.tiff')));
+                    elseif strcmp(rawInfo.MovToLoad, 'DataMasked')
+                        file2Analyze = file2Analyze(or(contains({file2Analyze.name}, append('driftcorr', '.tiff')),...
+                            contains({file2Analyze.name}, append('Segmentation', '.tiff')))); % SARAHV
+                    elseif strcmp(rawInfo.MovToLoad, 'Mask')
+                        file2Analyze = file2Analyze(contains({file2Analyze.name}, append('Segmentation', '.tiff'))); % SARAHV
+                    else
+                        file2Analyze = file2Analyze(contains({file2Analyze.name}, append(rawInfo.MovToLoad, '.tiff'))); % SARAHV
+                    end
+                    
                     if isempty(file2Analyze)
                         error(append('No files ending in ',  rawInfo.MovToLoad, '.tiff ', 'found in the specified directory.'));
                     end
                 end
             end
 
-            fullPath = [file2Analyze(1).folder filesep file2Analyze(1).name]; % constructs the full path to the first file found % commented out SARAHV
             
+            if strcmp(rawInfo.MovToLoad, 'DataMasked')
+                NumFiles = 2;
+                for i = 1:NumFiles
+                    fullPath{i} = [file2Analyze(1).folder filesep file2Analyze(i).name];
+                end       
+            else 
+                fullPath{1} = [file2Analyze(1).folder filesep file2Analyze(1).name]; % constructs the full path to the first file found % commented out SARAHV
+                NumFiles = 1;
+            end
+
             switch ext
                 
                 case '.ome.tif'
@@ -460,13 +481,21 @@ classdef Movie < handle
 
                     end
                 otherwise
-                    extName = strrep(ext,'.','');  
-                    [frameInfo,movInfo] = Load.Movie.(extName).getInfo(fullPath);
-                                  
+                    for i = 1:NumFiles
+                        extName{i} = strrep(ext,'.','');  
+                        [frameInfo{i},movInfo{i}] = Load.Movie.(extName{i}).getInfo(fullPath{i});
+                    end
+                    if NumFiles == 2
+                        assert(movInfo{1}.maxFrame == movInfo{2}.maxFrame, 'Raw data and mask do not have same number of frames');
+                    end             
             end
-            movInfo.ext = ext;
-            movInfo.indivFrame = movInfo.maxFrame;
-            
+            for i = 1:NumFiles
+                movInfo{i}.ext = ext;
+                movInfo{i}.indivFrame = movInfo{i}.maxFrame;
+            end
+            if NumFiles == 2
+                assert(strcmp(movInfo{1}.ext, movInfo{2}.ext), 'Raw data and mask do not have same extension');
+            end
         end
         
         function checkExtension(ext)
