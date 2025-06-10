@@ -54,7 +54,7 @@ classdef MPMovie < Core.Movie
         
         function set.calibrated(obj,calibrated)
             
-            assert(isstruct(calibrated),'Calibrated is expected to be a struct');
+            % assert(isstruct(calibrated),'Calibrated is expected to be a struct');
             obj.calibrated = calibrated;
             
         end
@@ -168,7 +168,7 @@ classdef MPMovie < Core.Movie
                 
             end
             
-            obj.calibrated = calibrate;
+            obj.calibrated{1,1} = calibrate;
             
         end
         
@@ -260,22 +260,22 @@ classdef MPMovie < Core.Movie
             end
         end
         
-        function [data] = getFrame(obj,idx)
+        function [data] = getFrame(obj,idx,q)
             %Allow the user to extract data from a specific frame, behavior
             %depends on the calibration
             assert(length(idx)==1,'Only one frame at a time');
             [idx] = Core.Movie.checkFrame(idx,obj.raw.maxFrame{1}(1));
             %Behavior depend on status
-            if isempty(obj.calibrated)
+            if isempty(obj.calibrated{1,1})
                 
                 [data] = getFrame@Core.Movie(obj,idx);
                 
-            elseif isstruct(obj.calibrated)
-                fieldsN = fieldnames(obj.calibrated.filePath);                
-                data = zeros(obj.calibrated.Height,obj.calibrated.Width,numel(fieldsN));
+            elseif isstruct(obj.calibrated{1,1})
+                fieldsN = fieldnames(obj.calibrated{1,1}.filePath);                
+                data = zeros(obj.calibrated{1,1}.Height,obj.calibrated{1,1}.Width,numel(fieldsN));
                 for i = 1:numel(fieldsN)
                     %Load plane
-                    [mov] = Load.Movie.tif.getFrame(obj.calibrated.filePath.(fieldsN{i}),idx);
+                    [mov] = Load.Movie.tif.getFrame(obj.calibrated{1,1}.filePath.(fieldsN{i}),idx);
                     data(:,:,i) = mov;
                     
                 end
