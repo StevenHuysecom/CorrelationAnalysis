@@ -68,20 +68,6 @@ classdef MPTrackingMovie < Core.MPLocMovie
                 Initialized = [ToTrack{1},(1:size(ToTrack{1},1))'];
     
                 ToTrack(1) = [];
-
-                %%% Track particles for rotational 
-                if obj.info.rotational == 1
-                    for i = 1:size(ToTrack{1,1},2)
-                    Trace(1,:) = ToTrack{1,1}(i,:);
-                    for j = 2:size(ToTrack,1)
-                    NextCoord = ToTrack{j,1};
-                    Distances = sqrt((Trace(1,1)-NextCoord(:,1)).^2 + (Trace(1,2)-NextCoord(:,2)).^2);
-                    [~, Idx] = min(Distances);
-                    Trace(j,:) = ToTrack{j,1}(Idx, :);
-                    end
-                    Traces{i} = Trace;
-                    end
-                end
     
                 %%%%% INITIALIZE FOR TRACKING DATA
                 % TrackedData = Tracked;
@@ -102,7 +88,7 @@ classdef MPTrackingMovie < Core.MPLocMovie
     
                 %%%%% TRACK DATA RECURSIVELY
                 radius = trackParam.radius;
-                MaximumTimeMem = trackParam.memory;
+                MaximumTimeMem = trackParam.memory*obj.info.ExpTime;
                 totlengthFinal = 0;
                 h = waitbar(0,'Tracking particles...');
                 while ~isempty(ToTrack) 
@@ -123,7 +109,7 @@ classdef MPTrackingMovie < Core.MPLocMovie
                         ImPrev.data = ImPrev.AddMemoryToPreviouslyTrackedData( TrackedData_data{end},MemoryArray_data);
     
                         %Search for neighbours in the immedeate vicitinity of radius = radius
-                        NextFrame.PossibleNeighbours = Core.trackingMethod.SearchNeighbours(NextFrame,ImPrev.data,radius);
+                        NextFrame.PossibleNeighbours = Core.trackingMethod.SearchNeighbours(NextFrame,ImPrev.data,radius./obj.info.PxSize);
     
                         %Resolve any conflitcs by minimizing the overall distance. 
     
@@ -166,7 +152,7 @@ classdef MPTrackingMovie < Core.MPLocMovie
                 close(h);
                 AllParticles = cell(1,TrackedData_maxid);
                 
-                TrackedData = Core.trackingMethod.ConvertFinalOutput( TrackedData_data,AllParticles,AllField);
+                TrackedData = Core.trackingMethod.ConvertFinalOutput( TrackedData_data,AllParticles,AllField, obj.info.PxSize);
                 
                 obj.particles{q,1}.traces = TrackedData;
                 obj.particles{q,1}.nTraces = length(TrackedData);
@@ -175,9 +161,13 @@ classdef MPTrackingMovie < Core.MPLocMovie
                 
                 obj.traces3D{q,1} = TrackedData;
                 
-                folder = append('calibrated', num2str(q));
+                if isfield(obj.info.file, "MovToLoad")
+                    folder = append('calibrated', obj.info.file.MovToLoad);
+                else
+                    folder = append('calibrated', num2str(q));
+                end
 
-                path = append(obj.raw.movInfo.Path, filesep, folder, filesep);
+                path = append(obj.raw.movInfo{1,1}.Path, filesep, folder, filesep);
                 filename =[path 'Traces3D.mat'];
                 
                 save(filename,'TrackedData');

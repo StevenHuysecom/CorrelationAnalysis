@@ -321,8 +321,8 @@ classdef MPMovie < Core.Movie
                 
                 xStep = diff(xPosMotor);
             else
-                xStep = zeros(obj.raw.maxFrame(1),1);
-                xPosMotor = zeros(obj.raw.maxFrame(1),1);
+                xStep = zeros(obj.raw.maxFrame{1,1}(1),1);
+                xPosMotor = zeros(obj.raw.maxFrame{1,1}(1),1);
             end
         end
         
@@ -340,8 +340,8 @@ classdef MPMovie < Core.Movie
                 
                 yStep = diff(yPosMotor);
             else
-                yStep = zeros(obj.raw.maxFrame(1),1);
-                yPosMotor = zeros(obj.raw.maxFrame(1),1);
+                yStep = zeros(obj.raw.maxFrame{1,1}(1),1);
+                yPosMotor = zeros(obj.raw.maxFrame{1,1}(1),1);
             end
             
         end
@@ -360,8 +360,8 @@ classdef MPMovie < Core.Movie
                 
                 zStep = diff(zPosMotor);
             else
-                zStep = zeros(obj.raw.maxFrame(1),1);
-                zPosMotor = zeros(obj.raw.maxFrame(1),1);
+                zStep = zeros(obj.raw.maxFrame{1,1}(1),1);
+                zPosMotor = zeros(obj.raw.maxFrame{1,1}(1),1);
             end
             
         end

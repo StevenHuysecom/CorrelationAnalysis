@@ -411,7 +411,7 @@ classdef trackingMethod < handle
 
 %% Conversion of final output
 
-        function Data = ConvertFinalOutput( TrackedData ,Data,AllFieldName)
+        function Data = ConvertFinalOutput( TrackedData ,Data,AllFieldName,PxSize)
     
             while ~isempty(TrackedData)
                 if ~isempty(TrackedData{1})
@@ -427,6 +427,9 @@ classdef trackingMethod < handle
 
                Data{i} = array2table(Data{i}); 
                Data{i}.Properties.VariableNames = AllFieldName;
+               Data{i}.Area = Data{i}.Area*((PxSize*10^(-3))^2);
+               Data{i}.row = Data{i}.row*PxSize;
+               Data{i}.col = Data{i}.col*PxSize;
             end
 
         end        

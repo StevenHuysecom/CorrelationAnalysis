@@ -12,7 +12,6 @@ classdef TrackingExperiment < handle
     SRCal2
     traces3D
     traces3Dcommon
-    MSD
         
     end
 
@@ -244,26 +243,26 @@ classdef TrackingExperiment < handle
                     allTraces = [];
                     fileN = cell(length(traces{q,1}),1);
                     fileN(:,1) = {i};
-               
+
                     [xStep,xMotor] = currentTrackMov.getXPosMotor;
                     [yStep,yMotor] = currentTrackMov.getYPosMotor;
                     [zSt,zMotor]   = currentTrackMov.getZPosMotor;
-    
+
                     colMot = cell(length(traces{q,1}),1);
                     colMot(:,1) = {xMotor};
                     colStep = cell(length(traces{q,1}),1);
                     colStep(:,1) = {xStep};
-    
+
                     rowMot = cell(length(traces{q,1}),1);
                     rowMot(:,1) = {yMotor};
                     rowStep = cell(length(traces{q,1}),1);
                     rowStep(:,1) = {yStep};
-    
+
                     zMot = cell(length(traces{q,1}),1);
                     zMot(:,1) = {zMotor};
                     zStep = cell(length(traces{q,1}),1);
                     zStep(:,1) = {zSt};
-    
+
                     allTraces = [allTraces; traces{q,1}(:), fileN,colStep,colMot,rowStep,rowMot,zStep,zMot ];
                     obj.traces3D{q,1} = allTraces;
                     obj.traces3D{q,2} = q; 
@@ -746,6 +745,85 @@ classdef TrackingExperiment < handle
                 plot(currentMSD)
             end
                        
+        end
+
+        function MakeMovie(obj, sizeParticles, minSize, trailing, frameRate)
+            %% Make Awesome movie
+            filename = append(obj.info.file.path, filesep, 'AwesomeTraceMovie.gif');
+
+            radius = 1000;
+            yLimit = [0 obj.trackMovies.mov1.calibrated{1, 1}.Height];
+            xLimit = [0 obj.trackMovies.mov1.calibrated{1, 1}.Width];
+
+            Fig = figure;
+            xlim(xLimit);
+            ylim(yLimit);
+            xlim manual;
+            ylim manual;
+            gcf;
+            hold on
+            
+            [x,y,z] = sphere(32);
+            x = x*sizeParticles/2;
+            y = y*sizeParticles/2;
+            z = z*sizeParticles/2;
+            
+            camlight
+            lighting('gouraud');
+            traces = obj.traces3D{1, 1};
+            
+            for i = 1 :obj.trackMovies.mov1.raw.maxFrame{1, 1}
+                [frameA] = obj.trackMovies.mov1.getFrame(i, 1);
+                imagesc(frameA);
+                hold on
+                for j = 1:size(traces,1)
+                    currTrace = traces{j,1};
+                    if height(currTrace) > minSize
+                        idx2Frame = currTrace.t==i;
+                        idx = i-trailing:i;
+                        idx = ismember(currTrace.t,idx);
+                        if and(~all(idx==0), ~all(idx2Frame ==0))
+            
+                            
+                            data2Plot = currTrace(idx,:);
+                            axis image
+                            xlim(xLimit);
+                            ylim(yLimit);
+                            xlim manual;
+                            ylim manual;
+            
+                            gcf;
+                            hold on
+            
+                            plot((data2Plot.col)./(obj.info.PxSize),(data2Plot.row)./(obj.info.PxSize),'color',[0 0 0])
+            
+                            X = x+currTrace.col(idx2Frame);
+                            Y = y+currTrace.row(idx2Frame);  
+
+                            title(append(num2str(i*obj.info.ExpTime), 'sec out of ', num2str(obj.trackMovies.mov1.raw.maxFrame{1, 1}*obj.info.ExpTime)));
+            
+                        end
+                    end
+                end
+                drawnow;
+                frame = getframe(Fig);
+                im = frame2im(frame);
+                [imind,cm] = rgb2ind(im,256);
+            
+                if i == 1
+            
+                    imwrite(imind,cm,filename,'gif','DelayTime',1/frameRate, 'loopcount',inf);
+            
+                else
+            
+                    imwrite(imind,cm,filename,'gif','DelayTime',1/frameRate, 'writemode','append');
+            
+                end
+                clf;
+            
+            end
+            
+            
         end
     end
 end

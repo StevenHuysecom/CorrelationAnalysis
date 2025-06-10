@@ -10,33 +10,33 @@ path2SRCal = [];
 MainFolder = 'E:\DDM_TestData';
 TimeFolders = {'Dancing cells'};
 ProteinFolders = {'1_Vinculin'}; 
-DiseaseFolders = {'CCM', 'CT'};
-SampleFolders = {'Set1', 'Set2', 'Set3', 'Set4'};
+DiseaseFolders = {'CCM'};
+SampleFolders = {'Set1'};
 
 %% Storing info about the file
 file.MovToLoad = ['DataMasked']; %always DataMasked
 info.type = 'normal'; %normal or transmission
 info.runMethod = 'run'; % load or run
 info.calibrate = true; %true to recalibrate;
-file.ext   = '.tif'; %extenstion of video
+file.ext   = '.tif';
 path2Cal =  [];
 dimension = '2D';
 correctDrift = false;
 info.TotTime = [];
-info.PxSize = 81; %in nm
-info.FWHM = 3; %Half with of gauss
-info.multiModal = 0; 
-info.detectionMethod = 'Intensity'; %always take Intensity
-MakeMovie = 1; %Make movie from traces (takes long)
+info.PxSize = 81;
+info.FWHM = 3;
+info.multiModal = 0;
+info.detectionMethod = 'Intensity';
 
 %% Detection parameters
-detectParam.size = [5 100]; % min and mix size of FAs in pixels
+detectParam.size = [20 100]; % min and mix size of FAs in pixels
 trackParam.radius  = 300;%nm
-trackParam.memory  = 3; %If trace is lost, how many frames to keep
+trackParam.memory  = 3;
 
 %% Diffusion parameters:
-diffInfo.fitRDiff = 4; %number of datapoints to plot MSD
+diffInfo.fitRDiff = 4; %number of datapoints
 diffInfo.T = 296.15; %temperature in Kelvin
+diffInfo.ExpTime = 0.2;
 diffInfo.minSize = 20; %min number of frames to be a trace
 
 
@@ -75,10 +75,8 @@ for c = 1:numel(TimeFolders)
                 trackingExp.retrieveTrackData(detectParam,trackParam);
                 traces = trackingExp.getTraces3D;
 
-                if MakeMovie == 1
-                    %% get an amazing movie with the traces
-                    trackingExp.MakeMovie(10, diffInfo.minSize, 500, 1000);
-                end
+                %% get an amazing movie with the traces
+                trackingExp.MakeMovie(10, diffInfo.minSize, 500, 1000);
                 
                 %% get the MSD, diffusion coefficient etc
                 diffExp = Core.DiffusionMovie(diffInfo, file, traces);
