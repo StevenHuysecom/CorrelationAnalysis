@@ -800,7 +800,7 @@ classdef TrackingExperiment < handle
                             X = x+currTrace.col(idx2Frame);
                             Y = y+currTrace.row(idx2Frame);  
 
-                            title(append(num2str(i*obj.info.ExpTime), 'sec out of ', num2str(obj.trackMovies.mov1.raw.maxFrame{1, 1}*obj.info.ExpTime)));
+                            title(append(num2str(round(i*obj.info.ExpTime)), 'sec out of ', num2str(round(obj.trackMovies.mov1.raw.maxFrame{1, 1}*obj.info.ExpTime))));
             
                         end
                     end

@@ -10,8 +10,8 @@ path2SRCal = [];
 MainFolder = 'E:\DDM_TestData';
 TimeFolders = {'Dancing cells'};
 ProteinFolders = {'1_Vinculin'}; 
-DiseaseFolders = {'CCM', 'CT'};
-SampleFolders = {'Set1', 'Set2', 'Set3', 'Set4'};
+DiseaseFolders = {'CT'};
+SampleFolders = {'Set2', 'Set3', 'Set4'};
 
 %% Storing info about the file
 file.MovToLoad = ['DataMasked']; %always DataMasked
@@ -58,6 +58,7 @@ for c = 1:numel(TimeFolders)
         for r = 1:numel(DiseaseFolders)
             
             key2 = sprintf('%s_%s', key1, DiseaseFolders{r});
+            diffInfo.ExpTime = FrameTimes.(key2);
             info.ExpTime = FrameTimes.(key2);
             if ~isempty(info.TotTime)
                 CorrelationInfo.nFrames = ceil((TotTime *60)/info.ExpTime);
