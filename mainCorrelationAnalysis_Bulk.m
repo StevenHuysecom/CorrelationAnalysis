@@ -3,11 +3,11 @@ clear all
 close all
 
 %% Pathinfo
-MainFolder = 'S:\DDM_TestData';
-TimeFolders = {'Dancing cells'};
-ProteinFolders = {'1_Vinculin'}; 
-DiseaseFolders = {'CCM'};
-SampleFolders = {'Set1'};
+MainFolder = 'C:\Users\steve\OneDrive';
+TimeFolders = {'Documenten'};
+ProteinFolders = {'TestData Indra'}; 
+DiseaseFolders = {'testdata'};
+SampleFolders = {'cell1'};
 
 %% Storing info about the file
 file.MovToLoad = ['Mask']; %For dancing cells: specify which mask to use, otherwise leave empty
@@ -15,7 +15,7 @@ file.MovToLoad = ['Mask']; %For dancing cells: specify which mask to use, otherw
 info.type = 'normal'; %normal or transmission
 info.runMethod = 'run'; % load or run
 info.calibrate = true; %true to recalibrate;
-file.ext   = '.tif';
+file.ext   = '.his';
 path2Cal =  [];
 dimension = '2D';
 correctDrift = false;
@@ -38,7 +38,7 @@ for c = 1:numel(TimeFolders)
         for r = 1:numel(DiseaseFolders)
             
             key2 = sprintf('%s_%s', key1, DiseaseFolders{r});
-            CorrelationInfo.ExpTime = FrameTimes.(key2);
+            CorrelationInfo.ExpTime = 1;% FrameTimes.(key2);
             if ~isempty(CorrelationInfo.TotTime)
                 CorrelationInfo.nFrames = ceil((TotTime *60)/CorrelationInfo.ExpTime);
             end
