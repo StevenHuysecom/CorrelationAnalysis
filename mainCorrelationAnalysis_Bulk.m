@@ -3,11 +3,19 @@ clear all;
 close all;
 
 %% Pathinfo
+<<<<<<< HEAD
 MainFolder = 'I:\1_Dancing_analysis';
 TimeFolders = {'2025_03_15_48h-45min-40x_correlation'};
 ProteinFolders = {'1_Vinculin', '2_Paxillin', '3_VECadherin', '4_ActinSPY555'};%, '5_ActinVinculin', '6_ActinPaxillin', '7_ActinVECadherin'};
 DiseaseFolders = {'CT','CCM'};
 SampleFolders = {'Set1', 'Set2', 'Set3', 'Set4'};
+=======
+MainFolder = 'C:\Users\steve\OneDrive';
+TimeFolders = {'Documenten'};
+ProteinFolders = {'TestData Indra'}; 
+DiseaseFolders = {'testdata'};
+SampleFolders = {'cell1'};
+>>>>>>> 822de9c2ec8826e3968d1ec5c4f701bdf0cdc9fd
 
 %% Storing info about the file
 file.MovToLoad = ['RawData']; %For dancing cells: specify which mask to use, otherwise leave empty
@@ -15,8 +23,12 @@ file.MovToLoad = ['RawData']; %For dancing cells: specify which mask to use, oth
 info.type = 'normal'; %normal or transmission
 info.runMethod = 'run'; % load or run
 info.calibrate = true; %true to recalibrate;
+<<<<<<< HEAD
 file.ext   = '.tif';
 %file.name = '*_Simple Segmentation';
+=======
+file.ext   = '.his';
+>>>>>>> 822de9c2ec8826e3968d1ec5c4f701bdf0cdc9fd
 path2Cal =  [];
 dimension = '2D';
 correctDrift = false;
@@ -39,7 +51,7 @@ for c = 1:numel(TimeFolders)
         for r = 1:numel(DiseaseFolders)
             
             key2 = sprintf('%s_%s', key1, DiseaseFolders{r});
-            CorrelationInfo.ExpTime = FrameTimes.(key2);
+            CorrelationInfo.ExpTime = 1;% FrameTimes.(key2);
             if ~isempty(CorrelationInfo.TotTime)
                 CorrelationInfo.nFrames = ceil((CorrelationInfo.TotTime*60)/CorrelationInfo.ExpTime);
             end
