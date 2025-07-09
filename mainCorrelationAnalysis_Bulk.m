@@ -1,25 +1,26 @@
-clc
-clear all
-close all
+clc;
+clear all;
+close all;
 
 %% Pathinfo
-MainFolder = 'S:\DDM_TestData';
-TimeFolders = {'Dancing cells'};
-ProteinFolders = {'1_Vinculin'}; 
-DiseaseFolders = {'CCM'};
-SampleFolders = {'Set1'};
+MainFolder = 'I:\1_Dancing_analysis';
+TimeFolders = {'2025_03_15_48h-45min-40x_correlation'};
+ProteinFolders = {'1_Vinculin', '2_Paxillin', '3_VECadherin', '4_ActinSPY555'};%, '5_ActinVinculin', '6_ActinPaxillin', '7_ActinVECadherin'};
+DiseaseFolders = {'CT','CCM'};
+SampleFolders = {'Set1', 'Set2', 'Set3', 'Set4'};
 
 %% Storing info about the file
-file.MovToLoad = ['Mask']; %For dancing cells: specify which mask to use, otherwise leave empty
-                     %'RawData', 'DataMasked', 'Mask'
+file.MovToLoad = ['RawData']; %For dancing cells: specify which mask to use, otherwise leave empty
+                     %'RawData', 'DataMasked', 'Mask' % DO ALL THREE
 info.type = 'normal'; %normal or transmission
 info.runMethod = 'run'; % load or run
 info.calibrate = true; %true to recalibrate;
 file.ext   = '.tif';
+%file.name = '*_Simple Segmentation';
 path2Cal =  [];
 dimension = '2D';
 correctDrift = false;
-CorrelationInfo.TotTime = [];
+CorrelationInfo.TotTime = 40; % in minutes (if empty: [])
 
 %% Input For Correlation thingies
 FrameTimes = struct('Vinculin_CT', 6.949, 'Vinculin_CCM', 5.489, 'Paxillin_CT', 6.073, 'Paxillin_CCM', 5.364, ...
@@ -30,17 +31,17 @@ FrameTimes = struct('Vinculin_CT', 6.949, 'Vinculin_CCM', 5.489, 'Paxillin_CT', 
 for c = 1:numel(TimeFolders)
 
     for o = 1:numel(ProteinFolders)
-        key1 = ProteinFolders{o}(3:end);
+        key1 = ProteinFolders{o}(3:end); % key becomes 'Vinculin' etc.
 
-        Time = cell(numel(SampleFolders), 1);
-        Corr = cell(numel(SampleFolders), 1);
+        Time = cell(numel(SampleFolders), 1); %
+        Corr = cell(numel(SampleFolders), 1); %
         
         for r = 1:numel(DiseaseFolders)
             
             key2 = sprintf('%s_%s', key1, DiseaseFolders{r});
             CorrelationInfo.ExpTime = FrameTimes.(key2);
             if ~isempty(CorrelationInfo.TotTime)
-                CorrelationInfo.nFrames = ceil((TotTime *60)/CorrelationInfo.ExpTime);
+                CorrelationInfo.nFrames = ceil((CorrelationInfo.TotTime*60)/CorrelationInfo.ExpTime);
             end
 
             MeanCorr.(DiseaseFolders{r}) = table(Time, Corr);
@@ -58,8 +59,16 @@ for c = 1:numel(TimeFolders)
                 [CorrelationOutput] = CorrelationMovie.main(CorrelationInfo, file, r, e);
                 MeanCorr.(DiseaseFolders{r}).Time{e} = CorrelationOutput.Time;
                 MeanCorr.(DiseaseFolders{r}).Corr{e} = CorrelationOutput.Correlation;
+
+                %% Save info
+                filenameRunInfo = append(file.path, filesep, sprintf('CorrelationInfo_%s.mat', file.MovToLoad));
+                save(filenameRunInfo, 'CorrelationInfo');
+                filenameRawCorr = append(file.path, filesep, sprintf('RawCorrelation_%s.mat', file.MovToLoad));
+                save(filenameRawCorr, 'CorrelationOutput');
             end
         end
+        filenameMeanCor = append(MainFolder, filesep, TimeFolders{c}, filesep, ProteinFolders{o}, sprintf('MeanCorrelation_%s.mat', file.MovToLoad));
+        save(filenameMeanCor, 'MeanCorr');
         CorrelationMovie.PlotCorrelation(MeanCorr, ProteinFolders{o}, append(MainFolder, filesep, TimeFolders{c}, filesep, ProteinFolders{o}));
     end
 end

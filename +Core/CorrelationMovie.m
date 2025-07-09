@@ -41,10 +41,10 @@ end
                 obj.CorrelationInfo.nFrames = obj.raw.maxFrame;
             end
 
-            obj.AllFrames = cell(1,obj.CorrelationInfo.nFrames{1});
+            obj.AllFrames = cell(1,obj.CorrelationInfo.nFrames); % TOOK {1} out (for TotTime not 0))
             f = waitbar(0,'Loading frames');
-            for i=1:obj.CorrelationInfo.nFrames{1} 
-                waitbar(i./obj.CorrelationInfo.nFrames{1},f,'Loading frames');
+            for i=1:obj.CorrelationInfo.nFrames % TOOK {1} out
+                waitbar(i./obj.CorrelationInfo.nFrames,f,'Loading frames'); % TOOK {1} out
                 user = memory;
                 if  user.MemAvailableAllArrays>1e+09
                     try
@@ -130,15 +130,15 @@ end
             
         
         function  [CorrelationOutput] = main(obj,Info,file, varargin)
-                Corr1_cell = cell(obj.CorrelationInfo.nFrames{1}-1, 1); % Each dt gets its own cell
+                Corr1_cell = cell(obj.CorrelationInfo.nFrames-1, 1); % Each dt gets its own cell % TOOK {1} out
 
-                for dt = 1:obj.CorrelationInfo.nFrames{1}-1
+                for dt = 1:obj.CorrelationInfo.nFrames-1 % TOOK {1} out
                     stp = dt;
                     cnt = 1;
                     tempCorr = [];
                 
-                    while cnt <= stp && cnt + stp <= obj.CorrelationInfo.nFrames{1}
-                        idx = cnt:stp:obj.CorrelationInfo.nFrames{1};
+                    while cnt <= stp && cnt + stp <= obj.CorrelationInfo.nFrames % TOOK {1} out
+                        idx = cnt:stp:obj.CorrelationInfo.nFrames; % TOOK {1} out
                         for c = 1:numel(idx) - 1
                             Frame1 = obj.AllFrames{1,idx(c)};
                             Frame2 = obj.AllFrames{1,idx(c+1)};
@@ -154,12 +154,12 @@ end
                     end
                 
                     Corr1_cell{dt} = tempCorr; % Safe!
-                    fprintf('Processing dt = %d / %d\n', dt, obj.CorrelationInfo.nFrames{1} - 1);
+                    fprintf('Processing dt = %d / %d\n', dt, obj.CorrelationInfo.nFrames - 1); % TOOK {1} out
                 end
                 
                 % After the parfor loop, convert cell array to matrix (if needed)
-                Corr1 = NaN(obj.CorrelationInfo.nFrames{1}-1, obj.CorrelationInfo.nFrames{1}-1);
-                for dt = 1:obj.CorrelationInfo.nFrames{1}-1
+                Corr1 = NaN(obj.CorrelationInfo.nFrames-1, obj.CorrelationInfo.nFrames-1); % TOOK {1} out (2x)
+                for dt = 1:obj.CorrelationInfo.nFrames-1 % TOOK {1} out
                     nVals = numel(Corr1_cell{dt});
                     Corr1(1:nVals, dt) = Corr1_cell{dt};
                 end
@@ -212,7 +212,7 @@ end
             xlabel('TimeLag (min)')
             ylabel('Multiscale structural similarity')
             ylim([0 1])
-            title(append('Correlation: ', Title, ' - all samples'))
+            title(append('Correlation: ', Title(3:end), ' - all samples'))
 
             Fig2 = figure(2);
             LegendColors = {};
@@ -244,7 +244,7 @@ end
             legend(LegendColors)
             xlabel('TimeLag (min)')
             ylabel('Multiscale structural similarity')
-            title(append('Correlation: ', Title, ' - all samples together + error'))
+            title(append('Correlation: ', Title(3:end), ' - all samples together + error'))
             ylim([0 1])
 
             if isempty(obj.raw.movToLoad)

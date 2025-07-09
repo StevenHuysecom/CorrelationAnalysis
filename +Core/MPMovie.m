@@ -89,6 +89,10 @@ classdef MPMovie < Core.Movie
                 end
                 [file2Analyze] = obj.getFileInPath(fullPath, '.mat');
                 
+                if size(file2Analyze, 1) > 1
+                    file2Analyze = file2Analyze(find(contains({file2Analyze.name}, 'calibrated')));
+                end
+                
                 if (~isempty(file2Analyze))
                     if obj.info.calibrate == true
                         %need to delete existing tif files
@@ -123,8 +127,8 @@ classdef MPMovie < Core.Movie
                             end
                         end
                         
-                        fullpath = [file2Analyze.folder filesep file2Analyze.name];
-                        tmp = load(fullpath);
+                        fullpath = [file2Analyze.folder filesep file2Analyze.name]; % SARAHV for the SegmentTracking this generates a wrong path
+                        tmp = load(fullpath); % SARAHV changed it to fullPath (capital)
                         calibrate = tmp.calib;
                         fieldN = fieldnames(calibrate.filePath);
                         for i = 1: length(fieldN)

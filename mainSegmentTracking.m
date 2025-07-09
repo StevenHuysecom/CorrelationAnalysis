@@ -1,43 +1,43 @@
-clc
-clear all
-close all
+clc;
+clear all;
+close all;
 
 %% Calibration info
 path2ZCal = [];
 path2SRCal = [];
 
 %% Pathinfo
-MainFolder = 'E:\DDM_TestData';
-TimeFolders = {'Dancing cells'};
-ProteinFolders = {'1_Vinculin'}; 
+MainFolder = 'I:\1_Dancing_analysis';
+TimeFolders = {'2025_03_15_48h-45min-40x_correlation'};
+ProteinFolders = {'2_Paxillin'}; 
 DiseaseFolders = {'CT'};
-SampleFolders = {'Set2', 'Set3', 'Set4'};
+SampleFolders = {''};%'Set2', 'Set3', 'Set4'};
 
 %% Storing info about the file
 file.MovToLoad = ['DataMasked']; %always DataMasked
 info.type = 'normal'; %normal or transmission
 info.runMethod = 'run'; % load or run
-info.calibrate = true; %true to recalibrate;
+info.calibrate = false; %true to recalibrate;
 file.ext   = '.tif'; %extenstion of video
 path2Cal =  [];
 dimension = '2D';
 correctDrift = false;
 info.TotTime = [];
-info.PxSize = 81; %in nm
+info.PxSize = 355.46; %in nm %% ADJUST
 info.FWHM = 3; %Half with of gauss
 info.multiModal = 0; 
 info.detectionMethod = 'Intensity'; %always take Intensity
-MakeMovie = 1; %Make movie from traces (takes long)
+MakeMovie = 0; %Make movie from traces (takes long)
 
 %% Detection parameters
-detectParam.size = [5 100]; % min and mix size of FAs in pixels
-trackParam.radius  = 300;%nm
-trackParam.memory  = 3; %If trace is lost, how many frames to keep
+detectParam.size = [5 100]; % min and mix size of FAs in pixels %% ADJUST % VinCT: [5 120], VinCCM: [5 100], PaxCT&CCM: [5 100]
+trackParam.radius = 3*info.PxSize; %nm % VinCT: 6, VinCCM: 4, PaxCT: 3
+trackParam.memory = 5; %If trace is lost, how many frames to keep
 
 %% Diffusion parameters:
 diffInfo.fitRDiff = 4; %number of datapoints to plot MSD
 diffInfo.T = 296.15; %temperature in Kelvin
-diffInfo.minSize = 20; %min number of frames to be a trace
+diffInfo.minSize = 15; %min number of frames to be a trace
 
 
 %% Input For Correlation thingies
@@ -45,7 +45,6 @@ FrameTimes = struct('Vinculin_CT', 6.949, 'Vinculin_CCM', 5.489, 'Paxillin_CT', 
     'VECadherin_CT', 5.673, 'VECadherin_CCM', 5.592, 'ActinSPY555_CT', 5.721, 'ActinSPY555_CCM', 5.390, ...
     'ActinVinculin_CT', 6.949, 'ActinVinculin_CCM', 5.489, 'ActinPaxillin_CT', 6.073, 'ActinPaxillin_CCM', 5.364, ...
     'ActinVECadherin_CT', 5.673, 'ActinVECadherin_CCM', 5.592);
-
 
 for c = 1:numel(TimeFolders)
 
