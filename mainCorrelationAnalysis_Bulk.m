@@ -3,32 +3,19 @@ clear all;
 close all;
 
 %% Pathinfo
-<<<<<<< HEAD
-MainFolder = 'I:\1_Dancing_analysis';
-TimeFolders = {'2025_03_15_48h-45min-40x_correlation'};
-ProteinFolders = {'1_Vinculin', '2_Paxillin', '3_VECadherin', '4_ActinSPY555'};%, '5_ActinVinculin', '6_ActinPaxillin', '7_ActinVECadherin'};
-DiseaseFolders = {'CT','CCM'};
-SampleFolders = {'Set1', 'Set2', 'Set3', 'Set4'};
-=======
-MainFolder = 'C:\Users\steve\OneDrive';
-TimeFolders = {'Documenten'};
-ProteinFolders = {'TestData Indra'}; 
-DiseaseFolders = {'testdata'};
-SampleFolders = {'cell1'};
->>>>>>> 822de9c2ec8826e3968d1ec5c4f701bdf0cdc9fd
+MainFolder = 'D:';
+TimeFolders = {'Sarah'};
+ProteinFolders = {'1_Vinculin'};%, '5_ActinVinculin', '6_ActinPaxillin', '7_ActinVECadherin'};
+DiseaseFolders = {'CCM'};
+SampleFolders = {'Set1'};
 
 %% Storing info about the file
-file.MovToLoad = ['RawData']; %For dancing cells: specify which mask to use, otherwise leave empty
-                     %'RawData', 'DataMasked', 'Mask' % DO ALL THREE
+file.MovToLoad = ['DataMasked']; %For dancing cells: specify which mask to use, otherwise leave empty
+                     %'RawData', 'DataMasked', 'Mask', 'DataSummedMask' % DO ALL THREE
 info.type = 'normal'; %normal or transmission
 info.runMethod = 'run'; % load or run
 info.calibrate = true; %true to recalibrate;
-<<<<<<< HEAD
 file.ext   = '.tif';
-%file.name = '*_Simple Segmentation';
-=======
-file.ext   = '.his';
->>>>>>> 822de9c2ec8826e3968d1ec5c4f701bdf0cdc9fd
 path2Cal =  [];
 dimension = '2D';
 correctDrift = false;

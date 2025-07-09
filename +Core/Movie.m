@@ -444,6 +444,9 @@ classdef Movie < handle
                     elseif strcmp(rawInfo.MovToLoad, 'DataMasked')
                         file2Analyze = file2Analyze(or(contains({file2Analyze.name}, append('driftcorr', '.tiff')),...
                             contains({file2Analyze.name}, append('Segmentation', '.tiff')))); % SARAHV
+                    elseif strcmp(rawInfo.MovToLoad, 'DataSummedMask')
+                        file2Analyze = file2Analyze(or(contains({file2Analyze.name}, append('driftcorr', '.tiff')),...
+                            contains({file2Analyze.name}, append('summed_mask', '.tiff'))));
                     elseif strcmp(rawInfo.MovToLoad, 'Mask')
                         file2Analyze = file2Analyze(contains({file2Analyze.name}, append('Segmentation', '.tiff'))); % SARAHV
                     else
@@ -462,6 +465,11 @@ classdef Movie < handle
                 for i = 1:NumFiles
                     fullPath{i} = [file2Analyze(1).folder filesep file2Analyze(i).name];
                 end       
+            elseif strcmp(rawInfo.MovToLoad, 'DataSummedMask')
+                NumFiles = 2;
+                for i = 1:NumFiles
+                    fullPath{i} = [file2Analyze(1).folder filesep file2Analyze(i).name];
+                end
             else 
                 fullPath{1} = [file2Analyze(1).folder filesep file2Analyze(1).name]; % constructs the full path to the first file found % commented out SARAHV
                 NumFiles = 1;
@@ -486,7 +494,9 @@ classdef Movie < handle
                         [frameInfo{i},movInfo{i}] = Load.Movie.(extName{i}).getInfo(fullPath{i});
                     end
                     if NumFiles == 2
-                        assert(movInfo{1}.maxFrame == movInfo{2}.maxFrame, 'Raw data and mask do not have same number of frames');
+                        if strcmp(rawInfo.MovToLoad, 'DataMasked')
+                            assert(movInfo{1}.maxFrame == movInfo{2}.maxFrame, 'Raw data and mask do not have same number of frames');
+                        end
                     end             
             end
             for i = 1:NumFiles
