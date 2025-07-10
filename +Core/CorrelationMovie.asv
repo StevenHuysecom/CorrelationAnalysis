@@ -39,14 +39,14 @@ end
                    
             if isempty(obj.CorrelationInfo.TotTime)
                 if strcmp(obj.raw.movToLoad, 'DataSummedMask')
-                    obj.CorrelationInfo.nFrames = obj.raw.maxFrame{1};
+                    obj.CorrelationInfo.nFrames = obj.raw.maxFrame(1);
                 elseif strcmp(obj.raw.movToLoad, 'DataMasked')
-                    nFrames1 = obj.raw.maxFrame{1};
-                    nFrames2 = obj.raw.maxFrame{2};
+                    nFrames1 = obj.raw{1}.maxFrame;
+                    nFrames2 = obj.raw{1}.maxFrame;
                     assert(nFrames1 == nFrames2, 'Michiel De Ras corrupted your data : Raw data and Mask have not equal number of frames');
                     obj.CorrelationInfo.nFrames = nFrames1;
                 else
-                    obj.CorrelationInfo.nFrames = obj.raw.maxFrame{1};
+                    obj.CorrelationInfo.nFrames = obj.raw.maxFrame;
                 end
             end
 

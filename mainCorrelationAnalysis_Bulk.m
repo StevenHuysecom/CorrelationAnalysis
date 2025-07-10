@@ -3,14 +3,14 @@ clear all;
 close all;
 
 %% Pathinfo
-MainFolder = 'D:';
+MainFolder = 'F:';
 TimeFolders = {'Sarah'};
 ProteinFolders = {'1_Vinculin'};%, '5_ActinVinculin', '6_ActinPaxillin', '7_ActinVECadherin'};
 DiseaseFolders = {'CCM'};
 SampleFolders = {'Set1'};
 
 %% Storing info about the file
-file.MovToLoad = ['DataMasked']; %For dancing cells: specify which mask to use, otherwise leave empty
+file.MovToLoad = ['DataSummedMask']; %For dancing cells: specify which mask to use, otherwise leave empty
                      %'RawData', 'DataMasked', 'Mask', 'DataSummedMask' % DO ALL THREE
 info.type = 'normal'; %normal or transmission
 info.runMethod = 'run'; % load or run
